@@ -1,0 +1,7 @@
+package-as: BobbersJournal
+ignore:
+  - documentation
+  - CLAUDE.md
+  - .github
+  - README.md
+  - CHANGELOG.md

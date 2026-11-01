@@ -1,0 +1,27 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+  <Include file="Libs\Libs.xml"/>
+  <Script file="Locales\enUS.lua"/>
+  <Script file="Locales\deDE.lua"/>
+  <Script file="Locales\frFR.lua"/>
+  <Script file="Core\Helper\Colors.lua"/>
+  <Script file="Core\Helper\Icons.lua"/>
+  <Script file="Core\Helper\Flavor.lua"/>
+  <Script file="Core\Core.lua"/>
+  <Script file="Core\DB.lua"/>
+  <Script file="Core\Helper\Zone.lua"/>
+  <Script file="Core\Helper\Skill.lua"/>
+  <Script file="Core\Helper\Gear.lua"/>
+  <Script file="Core\API.lua"/>
+  <Script file="Modules\DoubleClick.lua"/>
+  <Script file="Modules\Cast.lua"/>
+  <Script file="Modules\Buffs.lua"/>
+  <Script file="Modules\FindFish.lua"/>
+  <Script file="Modules\Tracker.lua"/>
+  <Script file="Modules\ZoneMap.lua"/>
+  <Script file="Modules\Journal.lua"/>
+  <Script file="Modules\Tooltip.lua"/>
+  <Script file="Modules\Bobber.lua"/>
+  <Script file="Modules\Broker.lua"/>
+  <Script file="Core\Options.lua"/>
+  <Script file="Core\Commands.lua"/>
+</Ui>

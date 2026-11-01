@@ -1,0 +1,29 @@
+## Interface: 120105, 16001
+## Title: |cff22B3A7Bobber's Journal|r
+## Notes: Fishing journal and fishing improvements.
+## Notes-deDE: Angel-Tagebuch und Verbesserungen für den Beruf Angeln.
+## Notes-frFR: Journal de pêche et améliorations pour la profession de pêche.
+## Category: Professions
+## Category-deDE: Berufe
+## Category-esES: Profesiones
+## Category-esMX: Profesiones
+## Category-frFR: Métiers
+## Category-itIT: Professioni
+## Category-koKR: 전문 기술
+## Category-ptBR: Profissões
+## Category-ruRU: Профессии
+## Category-zhCN: 专业
+## Category-zhTW: 專業技能
+## Author: N3zr0k
+## Version: 0.1.15-alpha.1
+## X-License: All rights reserved
+## SavedVariables: BobbersJournal_Settings, BobbersJournal_DB
+## X-Website: https://github.com/N3zr0k/BobbersJournal
+## X-Curse-Project-ID: 1776623
+## OptionalDeps: BugLab
+## AddonCompartmentFunc: BobbersJournal_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: BobbersJournal_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: BobbersJournal_OnAddonCompartmentLeave
+## IconTexture: Interface\AddOns\BobbersJournal\Media\Icon_Bobber_Transparent_64
+
+BobbersJournal.xml
