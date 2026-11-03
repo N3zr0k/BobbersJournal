@@ -55,6 +55,24 @@ local function getDebugFrame()
   return debugFrame
 end
 
+--- With debug on: adds the IDs of the element to the tooltip (label/value pairs; empty values are skipped) and re-shows it.
+function BJ:DebugTip(tip, ...)
+  if not (self.settings and self.settings.debug and tip) then return end
+  local parts = {}
+  for i = 1, select("#", ...), 2 do
+    local label, value = select(i, ...)
+    if value ~= nil and value ~= "" then parts[#parts + 1] = format("%s %s", label, tostring(value)) end
+  end
+  if #parts == 0 then return end
+  tip:AddLine("|cff888888" .. table.concat(parts, "  ") .. "|r")
+  tip:Show()
+end
+
+--- True when the client knows the atlas (atlas names differ between Retail and Forever).
+function BJ.HasAtlas(name)
+  return C_Texture ~= nil and C_Texture.GetAtlasInfo ~= nil and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
 function BJ:Debug(text)
   local log = self.debugLog
   log[#log + 1] = format("%.1f %s", GetTime and GetTime() or 0, text)
@@ -104,11 +122,16 @@ end
 local defaults = {
   minimap = {hide = false, minimapPos = 200, showInCompartment = false}, -- LibDBIcon reads these; the compartment entry comes from the TOC
   -- Casting intervenes in game control: off by default. weaponSwap only has an effect on Forever.
-  cast = {enabled = false, modifier = "SHIFT", button = "RightButton", weaponSwap = true, interval = 0.4},
+  cast = {enabled = false, modifier = "SHIFT", button = "RightButton", weaponSwap = true, interval = 0.4, autoLure = false, bobberToy = false, favoriteLure = nil, autoBest = true},
   doubleclick = {central = false, modifier = "SHIFT", button = "RightButton", priority = {}, off = {}},
   tooltip = {enabled = true, catches = true, counters = true, items = true, junk = false, barDetails = "key", barKey = "SHIFT"}, -- junk: listed only on request
-  bobber = {enabled = false, point = "TOP", x = 0, y = -160, scale = 1},
-  findFish = false, -- keep the minimap tracking Find Fish switched on
+  bobber = {enabled = false, hideCatches = false, point = "TOP", x = 0, y = -160, scale = 1},
+  journalFilter = "all", -- journal list: "all" or "collected"
+  skillBar = {enabled = false, scale = 1}, -- point/x/y only after it was moved; default place: above the experience bars
+  diaryList = true, -- Retail: our fish list on the empty Classic page of the fishing journal
+  diary = true, -- Retail: add our data to the fish pages of the fishing journal
+  npcPins = true, -- show the saved fishing vendors and teachers on the world map and the minimap
+  findFish = true, -- keep the minimap tracking Find Fish switched on
   debug = false, -- shows the developer tools in the options
   showDescriptions = true, -- grey explanation texts under the options
 }

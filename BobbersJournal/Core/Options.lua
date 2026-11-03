@@ -21,7 +21,7 @@ local function buttonName(v)
 end
 
 local function section(key) return function() return BJ.settings and BJ.settings[key] or {} end end
-local cast, tip, bobber = section("cast"), section("tooltip"), section("bobber")
+local cast, tip, bobber, skillBar = section("cast"), section("tooltip"), section("bobber"), section("skillBar")
 local function descriptionsOn() return not (BJ.settings and BJ.settings.showDescriptions == false) end
 
 ----------------------------------------------------------------------
@@ -187,50 +187,8 @@ local function createChoice(panel, anchor, label, values, get, set, display, ind
   text:SetText(label)
   local function pick(v) set(v) refresh(panel) end
 
-  local control, update, setEnabled
-  local ok, dd = pcall(CreateFrame, "DropdownButton", nil, panel, "WowStyle1DropdownTemplate")
-  if ok and dd and dd.SetupMenu then
-    control = dd
-    dd:SetWidth(180)
-    dd:SetPoint("LEFT", text, "LEFT", 220, 0)
-    dd:SetupMenu(function(_, root)
-      for _, v in ipairs(values) do
-        root:CreateRadio(display(v), function() return get() == v end, function() pick(v) end)
-      end
-    end)
-    update = function() if dd.GenerateMenu then dd:GenerateMenu() end end
-    setEnabled = function(on) dd:SetEnabled(on) end
-  elseif UIDropDownMenu_Initialize and UIDropDownMenu_AddButton then
-    local frame = CreateFrame("Frame", nil, panel, "UIDropDownMenuTemplate")
-    control = frame
-    frame:SetPoint("LEFT", text, "LEFT", 205, -2)
-    UIDropDownMenu_SetWidth(frame, 160)
-    UIDropDownMenu_Initialize(frame, function()
-      for _, v in ipairs(values) do
-        local info = UIDropDownMenu_CreateInfo()
-        info.text = display(v)
-        info.checked = get() == v
-        info.func = function() pick(v) end
-        UIDropDownMenu_AddButton(info)
-      end
-    end)
-    update = function() UIDropDownMenu_SetText(frame, display(get())) end
-    setEnabled = function(on)
-      if on then UIDropDownMenu_EnableDropDown(frame) else UIDropDownMenu_DisableDropDown(frame) end
-    end
-  else
-    local button = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
-    control = button
-    button:SetSize(180, 24)
-    button:SetPoint("LEFT", text, "LEFT", 220, 0)
-    button:SetScript("OnClick", function()
-      local cur, nextIndex = get(), 1
-      for i, v in ipairs(values) do if v == cur then nextIndex = i % #values + 1 end end
-      pick(values[nextIndex])
-    end)
-    update = function() button:SetText(display(get())) end
-    setEnabled = function(on) button:SetEnabled(on) end
-  end
+  local control, update, setEnabled = BJ.Menu.Choice(panel, {width = 180, values = values, get = get, pick = pick, display = display})
+  control:SetPoint("LEFT", text, "LEFT", control:GetObjectType() == "Frame" and 205 or 220, control:GetObjectType() == "Frame" and -2 or 0)
 
   local anchorFrame = createAnchor(panel, text, (indent or 0) + 30, control)
   table.insert(panel.refreshers, function()
@@ -358,12 +316,6 @@ local function buildGeneral(overviewName)
       L["Remembers your weapons, equips the pole and puts the weapons back after 5 minutes or when you are attacked."],
       function() return cast().weaponSwap ~= false end, function(v) cast().weaponSwap = v end, 30, castOn)
   end
-  _, a3 = createCheckbox(p, a3, L["Switch on fish tracking automatically"],
-    L["Checks whether Find Fish is active in the minimap tracking and switches it on if not. Off: your own choice stays."],
-    function() return BJ.settings.findFish == true end, function(v)
-      BJ.settings.findFish = v
-      if v and BJ.modules.FindFish then BJ.modules.FindFish.Check() end
-    end)
   local keyNote = p:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
   keyNote:SetPoint("TOPLEFT", a3, "BOTTOMLEFT", 0, -10)
   keyNote:SetPoint("RIGHT", p, "RIGHT", -PADDING, 0)
@@ -386,9 +338,12 @@ local function buildGeneral(overviewName)
   local _, t3b = createCheckbox(p, t3, L["Show fishing data on items"],
     L["Adds where and how often you caught an item, with coordinates and average quantity, to its tooltip."],
     function() return tip().items ~= false end, function(v) tip().items = v end, 30)
+  local _, t3b2 = createCheckbox(p, t3b, L["Show income per hour on fish"],
+    L["Adds the fish caught per hour and what they are worth per hour to a fish tooltip: sold to a vendor and, with Auctionator or TradeSkillMaster, at the auction house."],
+    function() return tip().income ~= false end, function(v) tip().income = v end, 30)
   local DETAIL_MODES = {"key", "always"}
   local DETAIL_KEYS = {"SHIFT", "CTRL", "ALT"}
-  local _, t3c = createChoice(p, t3b, L["Skill bar details"], DETAIL_MODES, function() return tip().barDetails or "key" end,
+  local _, t3c = createChoice(p, t3b2, L["Skill bar details"], DETAIL_MODES, function() return tip().barDetails or "key" end,
     function(v) tip().barDetails = v end, function(v) return v == "always" and L["Always"] or L["Only with key"] end, 30, tipOn)
   local _, t3d = createChoice(p, t3c, L["Key for details"], DETAIL_KEYS, function() return tip().barKey or "SHIFT" end,
     function(v) tip().barKey = v end, modifierName, 30,
@@ -397,26 +352,39 @@ local function buildGeneral(overviewName)
     L["Lists everything that is neither a crafting material, food nor openable (boots, cans) under Clean the waters. Junk is always recorded."],
     function() return tip().junk == true end, function(v) tip().junk = v end, 30, tipOn)
 
-  -- Bobber display
-  local bobberSection = createSection(p, t4, L["Bobber display"])
-  local bobberOn = function() return bobber().enabled end
-  local _, b1 = createCheckbox(p, bobberSection, L["Show the bobber display while fishing"],
-    L["Shows a transparent display with the zone figures while you fish. It disappears when you move or enter combat."],
-    bobberOn, function(v) bobber().enabled = v end)
-  local _, b2 = createButton(p, b1, L["Edit position"], function() BJ.modules.Bobber.StartEdit() end, 30)
-  local editHint = p:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  editHint:SetPoint("TOPLEFT", b2, "BOTTOMLEFT", 0, -6)
-  editHint:SetPoint("RIGHT", p, "RIGHT", -PADDING, 0)
-  editHint:SetJustifyH("LEFT")
-  editHint:SetText(L["Closes this window and opens Edit Mode, where you drag the display to its place."])
-
   -- Minimap
-  local minimapSection = createSection(p, editHint, L["Minimap"])
+  local minimapSection = createSection(p, t4, L["Minimap"])
   local _, m1 = createCheckbox(p, minimapSection, L["Show the minimap icon"], L["Shows the button on the minimap. The addon list entry stays."],
     function() return not (BJ.settings.minimap and BJ.settings.minimap.hide) end, function(v) BJ.modules.Broker.SetShown(v) end)
+  local _, m2 = createCheckbox(p, m1, L["Switch on fish tracking automatically"],
+    L["Checks whether Find Fish is active in the minimap tracking and switches it on if not. Off: your own choice stays."],
+    function() return BJ.settings.findFish == true end, function(v)
+      BJ.settings.findFish = v
+      if v and BJ.modules.FindFish then BJ.modules.FindFish.Check() end
+    end)
+
+  local _, mp = createCheckbox(p, m2, L["Show vendors and teachers on the maps"],
+    L["Shows the saved fishing teachers and vendors on the world map and the minimap. Teacher and vendor with an aqua ring."],
+    function() return BJ.settings.npcPins == true end, function(v)
+      BJ.settings.npcPins = v
+      if BJ.modules.Pins then BJ.modules.Pins.Refresh() end
+    end)
+
+  local _, m3, m4
+  if ns.Flavor.current == ns.Flavor.RETAIL then
+    _, m4 = createCheckbox(p, mp, L["Show my fish list on the Classic page"],
+      L["Fills the empty Classic Fishing page of the game's fishing journal with your fish list (common and uncommon fish). Takes effect when the journal is opened again."],
+      function() return BJ.settings.diaryList == true end, function(v) BJ.settings.diaryList = v end)
+    _, m3 = createCheckbox(p, m4, L["Add my data to the fishing journal"],
+      L["Adds your catches and the zones with catch chance below the description of a fish in the game's fishing journal."],
+      function() return BJ.settings.diary == true end, function(v)
+        BJ.settings.diary = v
+        if BJ.modules.Diary then BJ.modules.Diary.Refresh() end
+      end)
+  end
 
   -- Developer
-  local devSection = createSection(p, m1, L["Developer"])
+  local devSection = createSection(p, m3 or mp, L["Developer"])
   local _, d1 = createCheckbox(p, devSection, L["Debug mode"], L["Shows the developer tools below. Debug lines are kept in a short list; /bob probe prints the state."],
     function() return BJ.settings.debug == true end, function(v) BJ.settings.debug = v end)
   local reset, d2 = createButton(p, d1, L["Delete all data"], function() StaticPopup_Show("BOBBERSJOURNAL_RESET") end, 30)
@@ -435,17 +403,185 @@ local function buildGeneral(overviewName)
   return page
 end
 
+----------------------------------------------------------------------
+-- Subcategory: Bobber
+----------------------------------------------------------------------
+
+local function buildBobber(overviewName)
+  local page = createPanel(L["Bobber"], overviewName)
+  local p = createScrollContent(page)
+  local header = createHeader(p, L["Bobber"], L["Settings apply to all characters of this account."])
+  -- Bobber display
+  local bobberSection = createSection(p, header, L["Bobber display"])
+  local bobberOn = function() return bobber().enabled end
+  local _, b1 = createCheckbox(p, bobberSection, L["Show the bobber display while fishing"],
+    L["Shows a transparent display with the zone figures while you fish. It disappears when you move or enter combat."],
+    bobberOn, function(v) bobber().enabled = v if BJ.modules.Bobber then BJ.modules.Bobber.Refresh() end end)
+  local _, b1b = createCheckbox(p, b1, L["Hide catches and junk in the display"],
+    L["The bobber display then shows the skill bar only, without the lists of caught fish and junk. The tooltip of the Fishing spell keeps them."],
+    function() return bobber().hideCatches == true end, function(v) bobber().hideCatches = v end, 30, bobberOn)
+  local _, b2 = createButton(p, b1b, L["Edit position"], function() BJ.modules.Bobber.StartEdit() end, 30)
+  local editHint = p:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  editHint:SetPoint("TOPLEFT", b2, "BOTTOMLEFT", 0, -6)
+  editHint:SetPoint("RIGHT", p, "RIGHT", -PADDING, 0)
+  editHint:SetJustifyH("LEFT")
+  editHint:SetText(L["Closes this window and opens Edit Mode, where you drag the display to its place."])
+
+
+  -- Fishing skill bar like the experience bar
+  local skillSection = createSection(p, editHint, L["Skill bar"])
+  local _, s1 = createCheckbox(p, skillSection, L["Show the fishing skill as a bar"],
+    L["Shows the fishing skill like the experience and reputation bar, in the colour of the addon. By default it sits above the experience bars."],
+    function() return skillBar().enabled == true end,
+    function(v) skillBar().enabled = v if BJ.modules.SkillBar then BJ.modules.SkillBar.Refresh() end end)
+  local _, s1b = createCheckbox(p, s1, L["Hide the bar at the maximum skill"],
+    L["Hides the skill bar once the skill of the current area is at its maximum. The tooltip still shows it."],
+    function() return skillBar().hideAtMax == true end,
+    function(v) skillBar().hideAtMax = v if BJ.modules.SkillBar then BJ.modules.SkillBar.Refresh() end end,
+    30, function() return skillBar().enabled == true end)
+  local _, s2 = createButton(p, s1b, L["Edit position"], function() BJ.modules.SkillBar.StartEdit() end, 30)
+  editHint = s2
+
+  -- The oversized bobber: toy (Retail) or item in the bags (Retail and Forever)
+  local toySection = createSection(p, editHint, L["Oversized bobber"])
+  local _, t1 = createCheckbox(p, toySection, L["Always use the oversized bobber toy"],
+    L["If you own the toy Reusable Oversized Bobber, or have the item in your bags, the click that casts uses it first when its effect is not active. Needs Casting to be on."],
+    function() return cast().bobberToy == true end, function(v) cast().bobberToy = v end)
+  local last = t1
+  p.last = last
+  return page
+end
+
+----------------------------------------------------------------------
+-- Subcategory: Lures
+----------------------------------------------------------------------
+
+local function buildLures(overviewName)
+  local page = createPanel(L["Lures"], overviewName)
+  local p = createScrollContent(page)
+  local header = createHeader(p, L["Lures"], L["Settings apply to all characters of this account."])
+
+  -- Favourite lure: bag slot look; drag a lure onto it, right click removes it, mouse over shows the tooltip,
+  -- the dropdown lists the lures in the bags.
+  local favSection = createSection(p, header, L["Favorite lure"])
+  local slot = CreateFrame("Button", nil, p)
+  slot:SetSize(48, 48)
+  slot:SetPoint("TOPLEFT", favSection, "BOTTOMLEFT", 0, -10)
+  slot.back = slot:CreateTexture(nil, "BACKGROUND")
+  slot.back:SetAllPoints()
+  if BJ.HasAtlas("bags-item-slot64") then slot.back:SetAtlas("bags-item-slot64")
+  else slot.back:SetTexture("Interface\\Buttons\\UI-EmptySlot-Disabled") slot.back:SetTexCoord(0.15, 0.85, 0.15, 0.85) end
+  slot.icon = slot:CreateTexture(nil, "ARTWORK")
+  slot.icon:SetPoint("TOPLEFT", 3, -3) slot.icon:SetPoint("BOTTOMRIGHT", -3, 3)
+  slot.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+  -- grey frame like the bag slots
+  slot.frameTex = slot:CreateTexture(nil, "OVERLAY")
+  slot.frameTex:SetPoint("TOPLEFT", -5, 5) slot.frameTex:SetPoint("BOTTOMRIGHT", 5, -5)
+  if BJ.HasAtlas("collections-itemborder-collected") then slot.frameTex:SetAtlas("collections-itemborder-collected")
+  else slot.frameTex:SetTexture("Interface\\Common\\WhiteIconFrame") end
+  local gray = BAG_ITEM_QUALITY_COLORS and BAG_ITEM_QUALITY_COLORS[1] or COMMON_GRAY_COLOR
+  if gray and gray.GetRGB then slot.frameTex:SetVertexColor(gray:GetRGB()) else slot.frameTex:SetVertexColor(0.62, 0.62, 0.62) end
+  slot:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+  slot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  slot:RegisterForDrag("LeftButton")
+  local favName = p:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+  favName:SetPoint("LEFT", slot, "RIGHT", 12, 0)
+
+  local function setFavorite(id)
+    cast().favoriteLure = id
+    refresh(page)
+    if BJ.modules.Journal and BJ.modules.Journal.Refresh then BJ.modules.Journal.Refresh() end
+  end
+  local function drop()
+    local kind, id = GetCursorInfo()
+    if kind ~= "item" then return false end
+    if ns.Lures and ns.Lures.IsLure(id) then
+      setFavorite(id)
+      ClearCursor()
+    else
+      BJ:Print(L["This item is not a fishing lure."])
+    end
+    return true
+  end
+  slot:SetScript("OnReceiveDrag", drop)
+  slot:SetScript("OnEnter", function(self)
+    local id = cast().favoriteLure
+    if id then GameTooltip:SetOwner(self, "ANCHOR_RIGHT") GameTooltip:SetItemByID(id) GameTooltip:Show() end
+  end)
+  slot:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+  -- Dropdown with the lures in the bags
+  local function bagLures()
+    local list = {}
+    for id, info in pairs(ns.Lures and ns.Lures.BagCounts() or {}) do
+      local name = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or ("[" .. id .. "]")
+      list[#list + 1] = {id = id, text = format("%s  x%d", name, info.count)}
+    end
+    table.sort(list, function(x, y) return x.text < y.text end)
+    return list
+  end
+  -- Left click on the slot opens the list of the lures in the bags
+  local function openLureMenu(owner)
+    local items = {}
+    for _, v in ipairs(bagLures()) do
+      items[#items + 1] = {text = v.text, checked = function() return cast().favoriteLure == v.id end, func = function() setFavorite(v.id) end}
+    end
+    if #items == 0 then items[1] = {text = L["No lures in your bags"], disabled = true} end
+    BJ.Menu.Popup(owner, L["Lures in your bags"], items)
+  end
+  slot:SetScript("OnClick", function(self, button)
+    if drop() then return end
+    if button == "RightButton" then setFavorite(nil) else openLureMenu(self) end
+  end)
+  local ddAnchor = slot
+  table.insert(p.refreshers, function()
+    local id = cast().favoriteLure
+    if id then
+      local getInfo = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+      slot.icon:SetTexture(getInfo and select(5, getInfo(id)) or nil)
+      favName:SetText((C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or ("[" .. id .. "]"))
+    else
+      slot.icon:SetTexture(nil)
+      favName:SetText(L["No favorite lure set"])
+    end
+  end)
+  local favHint = p:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  favHint:SetPoint("TOPLEFT", ddAnchor, "BOTTOMLEFT", 0, -6)
+  favHint:SetPoint("RIGHT", p, "RIGHT", -PADDING, 0)
+  favHint:SetJustifyH("LEFT")
+  favHint:SetText(L["Left click opens the lures in your bags, or drag a lure onto the field. Right click removes it."])
+
+  -- Automatic lures
+  local autoSection = createSection(p, favHint, L["Automatic lures"])
+  local castOn = function() return cast().enabled end
+  local _, a1 = createCheckbox(p, autoSection, L["Apply lures automatically"],
+    L["If the pole has no lure, the next click applies a lure from your bags (the favorite first); the click after that casts. Needs Casting to be on."],
+    function() return cast().autoLure == true end, function(v) cast().autoLure = v end, 0, castOn)
+  local _, a2 = createCheckbox(p, a1, L["Best lure as fallback"],
+    L["Without a favorite, or when it is not in your bags, the lure with the highest fishing bonus in your bags is used. Off: only the favorite is used."],
+    function() return cast().autoBest ~= false end, function(v) cast().autoBest = v end, 30,
+    function() return cast().enabled and cast().autoLure == true end)
+  p.last = a2
+  return page
+end
+
 local function register()
   local overview = buildOverview()
   local general = buildGeneral(overview.name)
+  local bobber = buildBobber(overview.name)
+  local lures = buildLures(overview.name)
   if Settings and Settings.RegisterCanvasLayoutCategory then
     local cat = Settings.RegisterCanvasLayoutCategory(overview, overview.name)
     Settings.RegisterAddOnCategory(cat)
     BJ.settingsSubcategory = Settings.RegisterCanvasLayoutSubcategory(cat, general, general.name)
+    Settings.RegisterCanvasLayoutSubcategory(cat, bobber, bobber.name)
+    Settings.RegisterCanvasLayoutSubcategory(cat, lures, lures.name)
     BJ.settingsCategory = cat
   elseif InterfaceOptions_AddCategory then
     InterfaceOptions_AddCategory(overview)
     InterfaceOptions_AddCategory(general)
+    InterfaceOptions_AddCategory(bobber)
+    InterfaceOptions_AddCategory(lures)
   end
 end
 

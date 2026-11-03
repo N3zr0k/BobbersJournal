@@ -6,7 +6,7 @@ local L = BJ.L
 --   * pole in hand: cast "Fishing".
 -- Only while standing. After RADIUS metres of movement the weapons come back (after combat if needed).
 -- Not enough bag space for the weapons: message, no swap. Off by default (intervenes in game control).
--- Auto lure (Glimpse FishingLure) is not ported yet.
+-- Auto lure (Glimpse FishingLure): option cast.autoLure, see lureMacro.
 local M = BJ:RegisterModule("Cast")
 
 local KEY = "fishing"
@@ -140,11 +140,170 @@ function M.SwapWanted()
   return ns.Flavor.current == ns.Flavor.FOREVER and opt("weaponSwap") ~= false
 end
 
+-- Auto lure: the pole is in hand and has no lure -> this click applies the best lure from the bags (macro: use the
+-- item, then the main hand), the next click casts. Using items is protected, so it has to be a secure macro.
+local function lureMacro()
+  if opt("autoLure") ~= true or api.InCombatLockdown() then return nil end
+  ns.Lures.RescanOnce() -- the first cast of the session reads the bags again
+  local retail = ns.Flavor.current == ns.Flavor.RETAIL
+  -- Forever: the lure is an enchant on the pole in the main hand. Retail: the lure is a buff on the player (the pole
+  -- sits in the profession slot, not in the main hand), so there it is "buff not active yet".
+  local poleSlot = Gear.PoleSlot()
+  -- Retail with the pole in a gear slot (main hand or fishing tool slot): the lure is applied to the pole like in Forever.
+  local onPole = poleSlot ~= nil
+  if onPole and Gear.GetMainHandEnchant() then BJ:Debug("autolure: enchant present") return nil end
+  if not retail and not onPole then BJ:Debug("autolure: no pole") return nil end
+  -- The favourite from the bags first; without one (not set or not in the bags) the best lure, if that is wanted.
+  local best = opt("favoriteLure") and ns.Lures and ns.Lures.FindItem(opt("favoriteLure"))
+  if best and best.usable == false then BJ:Debug("autolure: favourite " .. best.id .. " needs more fishing skill") best = nil end
+  if not best and opt("autoBest") ~= false then best = ns.Lures and ns.Lures.FindBest() end
+  if not best then BJ:Debug("autolure: no lure in the bags") return nil end
+  if retail and not onPole then
+    local spellID = C_Item and C_Item.GetItemSpell and select(2, C_Item.GetItemSpell(best.id))
+    if spellID and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID and C_UnitAuras.GetPlayerAuraBySpellID(spellID) then
+      BJ:Debug("autolure: effect of lure " .. best.id .. " is active") return nil
+    end
+    api.Notice(format(L["Apply %s."], best.link))
+    return format("/use %d %d", best.container, best.slot)
+  end
+  if BJ.modules.Lures then BJ.modules.Lures.Note(best.id) end
+  local pole = api.GetInventoryItemLink("player", poleSlot) or ""
+  api.Notice(format(L["Apply %s to %s."], best.link, pole))
+  if best.bonus then api.Notice(format(L["Your fishing skill increases by %d."], best.bonus)) end
+  return format("/use %d %d\n/use %d", best.container, best.slot, poleSlot)
+end
+
+-- The oversized bobber is used first when its effect is not active: as the toy "Reusable Oversized Bobber" (Retail,
+-- when collected and usable), otherwise as the item in the bags (Retail and Forever).
+local TOY_ID, TOY_PAUSE = 202207, 60
+local toyUsedAt = 0
+
+local function getCooldown(id)
+  local f = (C_Item and C_Item.GetItemCooldown) or GetItemCooldown
+  if not f then return nil end
+  local ok, start, duration = pcall(f, id)
+  if not ok then return nil end
+  return tonumber(BJ.Clean(start)), tonumber(BJ.Clean(duration))
+end
+
+local function itemCount()
+  local f = (C_Item and C_Item.GetItemCount) or GetItemCount
+  if not f then return 0 end
+  local ok, n = pcall(f, TOY_ID)
+  return ok and tonumber(n) or 0
+end
+
+--- "toy" when the toy is collected and usable (Retail), "item" when the item is in the bags, else nil.
+local function bobberSource()
+  if ns.Flavor.current == ns.Flavor.RETAIL and PlayerHasToy and PlayerHasToy(TOY_ID)
+    and not (C_ToyBox and C_ToyBox.IsToyUsable and not C_ToyBox.IsToyUsable(TOY_ID)) then
+    return "toy"
+  end
+  if itemCount() > 0 then return "item" end
+  return nil
+end
+
+-- Player buffs as { name, icon, spellId, expirationTime } for the client's aura API (Retail) or UnitBuff (Forever)
+local function buffAt(i)
+  if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+    local a = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
+    return a and {name = BJ.Clean(a.name), icon = BJ.Clean(a.icon), spellId = BJ.Clean(a.spellId), expirationTime = a.expirationTime}
+  end
+  if UnitBuff then
+    local name, icon, _, _, _, expires, _, _, _, spellId = UnitBuff("player", i)
+    return name and {name = BJ.Clean(name), icon = BJ.Clean(icon), spellId = BJ.Clean(spellId), expirationTime = expires}
+  end
+end
+
+--- State of the oversized bobber: nil when neither toy nor item is there. {active, left = seconds of the buff, cooldown = seconds left}
+-- The buff is not necessarily the item's use spell, so look it up by spell ID, then by name/icon
+local function findToyAura()
+  local spellID = C_Item and C_Item.GetItemSpell and select(2, C_Item.GetItemSpell(TOY_ID))
+  if not spellID and GetItemSpell then spellID = select(2, GetItemSpell(TOY_ID)) end
+  local names = {}
+  local spellName = spellID and ((C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(spellID)) or (GetSpellInfo and GetSpellInfo(spellID)))
+  if type(spellName) == "string" then names[spellName] = true end
+  local itemName = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(TOY_ID)
+  if type(itemName) == "string" then names[itemName] = true end
+  local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(TOY_ID)
+  for i = 1, 60 do
+    local aura = buffAt(i)
+    if not aura then break end
+    if (spellID and aura.spellId == spellID) or (type(aura.name) == "string" and names[aura.name]) or (icon and aura.icon == icon) then return aura end
+  end
+  return nil
+end
+
+function M.ToyStatus()
+  if opt("bobberToy") ~= true then return nil end -- option off: not shown in the tooltips
+  if not bobberSource() then return nil end
+  local now = GetTime and GetTime() or 0
+  local st = {active = false}
+  local aura = findToyAura()
+  if aura then
+    st.active = true
+    local expires = tonumber(BJ.Clean(aura.expirationTime))
+    if expires and expires > 0 then st.left = math.max(expires - now, 0) end
+  end
+  local start, duration = getCooldown(TOY_ID)
+  if start and duration and start > 0 and duration > 1.5 and start + duration > now then st.cooldown = start + duration - now end
+  return st
+end
+
+--- Name of the toy for /usetoy. The item name is only there once the client has loaded the item, so it is requested at
+--- login (RequestToyData) and the toy box is asked as well; without a name the first double click could not use the toy.
+local function toyName()
+  local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(TOY_ID)
+  if type(name) == "string" and name ~= "" then return name end
+  if C_ToyBox and C_ToyBox.GetToyInfo then
+    local ok, _, toy = pcall(C_ToyBox.GetToyInfo, TOY_ID)
+    if ok and type(toy) == "string" and toy ~= "" then return toy end
+  end
+  if GetItemInfo then
+    local info = GetItemInfo(TOY_ID)
+    if type(info) == "string" and info ~= "" then return info end
+  end
+  return nil
+end
+
+local function requestToyData()
+  if C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, TOY_ID) end
+  if C_ToyBox and C_ToyBox.GetToyInfo then pcall(C_ToyBox.GetToyInfo, TOY_ID) end
+end
+
+local function toyMacro()
+  if opt("bobberToy") ~= true then BJ:Debug("toy: option is off") return nil end
+  if api.InCombatLockdown() then BJ:Debug("toy: in combat") return nil end
+  local source = bobberSource()
+  if not source then BJ:Debug("toy: neither the toy " .. TOY_ID .. " nor the item in the bags") return nil end
+  local now = GetTime and GetTime() or 0
+  if now - toyUsedAt < TOY_PAUSE then BJ:Debug("toy: used less than " .. TOY_PAUSE .. " s ago") return nil end
+  local start, duration = getCooldown(TOY_ID)
+  if start and duration and start > 0 and duration > 0 and start + duration > now then BJ:Debug("toy: on cooldown") return nil end
+  -- effect active already?
+  if findToyAura() then BJ:Debug("toy: effect is active") return nil end
+  toyUsedAt = now
+  -- /usetoy wants the toy NAME (UseToyByName), not the ID; the item from the bags is used with /use item:<id>
+  local name = toyName()
+  if source == "toy" and not name then
+    requestToyData()
+    BJ:Debug("toy: name not loaded yet, requested")
+    toyUsedAt = 0
+    return nil -- the next click has it
+  end
+  local macro = (source == "toy" and type(name) == "string" and name ~= "") and ("/usetoy " .. name) or ("/use item:" .. TOY_ID)
+  BJ:Debug("bobber (" .. source .. "): " .. macro)
+  return macro
+end
+
 local function prepare()
   local name = Skill.SpellName(Skill.REFERENCE)
   local ready = true
   if M.SwapWanted() then ready = M.PreparePole() end
-  if ready and name then return {type = "spell", spell = name} end
+  if not ready then return nil end
+  local macro = toyMacro() or lureMacro()
+  if macro then return {type = "macro", macrotext = macro} end
+  if name then return {type = "spell", spell = name} end
 end
 
 function M:OnEnable()
@@ -156,6 +315,8 @@ function M:OnEnable()
   -- Attacked: equipment is locked in combat, so the weapons come back the moment combat ends.
   BJ:RegisterEvent("PLAYER_REGEN_DISABLED", "cast", function() if saved() then M.restorePending = true end end)
   M.CreateKeyButton()
+  requestToyData()
+  BJ:RegisterEvent("PLAYER_ENTERING_WORLD", "cast.toy", requestToyData)
   if saved() then watch() end -- after login/reload, keep watching while weapons are still remembered
 end
 
@@ -186,6 +347,7 @@ function M.CreateKeyButton()
       prepared = prepare() or false
       self:SetAttribute("type", prepared and prepared.type or nil)
       self:SetAttribute("spell", prepared and prepared.spell or nil)
+      self:SetAttribute("macrotext", prepared and prepared.macrotext or nil)
     end
   end)
   keyButton:SetScript("PostClick", function(_, _, down) if not down then prepared = nil end end)

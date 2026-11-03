@@ -12,8 +12,16 @@ Icons.logoStacked = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Logo_Stacked_Tra
 
 Icons.maskSoft = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Mask_Soft_128" -- soft-edged mask (technical, not artwork)
 
+Icons.maskBar = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Mask_Bar_256" -- rounded ends of the skill bar fill (technical)
+Icons.maskEdge = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Mask_Edge_128" -- rectangular edge fade for the zone map (technical)
+Icons.maskRound = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Mask_Round_128" -- round mask with a wide soft edge (technical)
 Icons.ringStamp = "Interface\\AddOns\\" .. ADDON .. "\\Media\\Ring_Stamp_128" -- ring for stamp icons (technical, not artwork)
 
 Icons.logo = function(size) return Icons.Path("Frameless", size or 64) end
 Icons.fish, Icons.zones, Icons.book, Icons.bobber = "Fish", "Zones", "Book", "Bobber"
 Icons.settings, Icons.stats, Icons.equipment = "Settings", "Statistik", "Equipment" -- stats/equipment: planned features
+
+-- Map symbols of the teachers and vendors: the game's own icons (book of the profession trainers, the purse of the vendor
+-- gossip option) inside an aqua ring of the addon (Icons.ringStamp, tinted).
+Icons.teacher = "Interface\\Minimap\\Tracking\\Profession"
+Icons.vendor = "Interface\\GossipFrame\\VendorGossipIcon"

@@ -11,6 +11,17 @@ for name, hex in pairs(HEX) do
   Colors[name .. "Hex"] = "|cff" .. hex:lower()
 end
 
+--- Colour escape of a colour given as r, g, b (0..1): "|cffrrggbb"
+function Colors.Escape(r, g, b)
+  return format("|cff%02x%02x%02x", math.floor(math.min(r * 255 + 0.5, 255)), math.floor(math.min(g * 255 + 0.5, 255)), math.floor(math.min(b * 255 + 0.5, 255)))
+end
+
+--- Text in a colour given as r, g, b (0..1): Colors.Wrap(r, g, b, "text"); without a colour the text is returned as it is.
+function Colors.Wrap(r, g, b, text)
+  if not r then return text end
+  return Colors.Escape(r, g, b) .. text .. "|r"
+end
+
 --- Wraps text in a colour escape: Colors.Paint("aqua", "text")
 function Colors.Paint(name, text)
   return (Colors[name .. "Hex"] or "|cffffffff") .. tostring(text) .. "|r"

@@ -71,6 +71,25 @@ function M:OnEnable()
   -- The compartment entry comes from the TOC (coloured title and icon, like Binds); LibDBIcon must not add a second one.
   BJ.settings.minimap.showInCompartment = false
   ldbIcon:Register(ADDON, obj, BJ.settings.minimap)
+  -- icon a little larger and 4 px higher than LibDBIcon's default; the library resets it on some refreshes, so again after those
+  M.StyleButton()
+  if hooksecurefunc and ldbIcon.ResetButtonIcon then
+    hooksecurefunc(ldbIcon, "ResetButtonIcon", function(_, name) if name == ADDON then M.StyleButton() end end)
+  end
+end
+
+--- Size and position of the icon inside the minimap button.
+function M.StyleButton()
+  local button = ldbIcon and ldbIcon.GetMinimapButton and ldbIcon:GetMinimapButton(ADDON)
+  if not (button and button.icon) then return end
+  button.icon:ClearAllPoints()
+  if ldbIcon.IsButtonCompartmentAvailable and ldbIcon:IsButtonCompartmentAvailable() then
+    button.icon:SetSize(21, 21)
+    button.icon:SetPoint("CENTER", 0, 4)
+  else
+    button.icon:SetSize(20, 20) -- default 17 px at TOPLEFT 7/-6: same centre, larger, 4 px higher
+    button.icon:SetPoint("TOPLEFT", 5.5, -0.5)
+  end
 end
 
 -- Addon compartment (Retail; the TOC entries are ignored where it does not exist)

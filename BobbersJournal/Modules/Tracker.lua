@@ -82,6 +82,7 @@ local function onSucceeded(_, unit, _, spellID)
     pending.outcome = pending.outcome or "miss"
     resolve()
   end
+  ns.Lures.RescanOnce() -- first fishing of the session: read the lure inventory again
   local map, x, y = Zone.Where()
   local rank, _, bonus = Skill.Info()
   local hour = GetGameTime and (GetGameTime()) -- server time, 0-23
@@ -118,4 +119,17 @@ function M:OnEnable()
   BJ:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", "tracker", onSucceeded)
   BJ:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP", "tracker", onStop)
   BJ:RegisterEvent("LOOT_OPENED", "tracker", onLoot)
+  -- the bank contents are only known to the client after a visit at the bank (in this login); the journal says so while not
+  local function bankRead() if BJ.DB.session then BJ.DB.session.bankRead = true end end
+  BJ:RegisterEvent("BANKFRAME_OPENED", "tracker.bank", bankRead)
+  BJ:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "tracker.bank", function(_, kind)
+    local t = Enum and Enum.PlayerInteractionType
+    if t and kind and (kind == t.Banker or kind == t.AccountBanker) then bankRead() end
+  end)
+  -- the play session starts at a real login; a /reload keeps it
+  BJ:RegisterEvent("PLAYER_ENTERING_WORLD", "tracker.session", function(_, isInitialLogin, isReloadingUi)
+    if isInitialLogin and not isReloadingUi then BJ.DB:ResetSession() end
+  end)
+  -- names of items caught earlier are fetched and saved in the background
+  if C_Timer then C_Timer.After(5, function() BJ.Protected("names", function() BJ.DB:PreloadNames() end) end) end
 end

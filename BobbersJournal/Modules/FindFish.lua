@@ -22,6 +22,22 @@ local function info(i)
   return name, active
 end
 
+-- Retail's tracking menu keeps its own copy of the state; it re-reads it on SPELLS_CHANGED / tracking CVAR updates, and
+-- tracking that works through a spell (Find Fish) does not always trigger those. Once the change is through, the menu
+-- button gets the same event so the check mark is right. Only a state read; no tracking is changed here.
+function M.SyncMenu(index)
+  if not C_Timer then return end
+  C_Timer.After(0.7, function()
+    BJ.Protected("findfish sync", function()
+      local _, active = info(index)
+      BJ:Debug("Find Fish active after switching: " .. tostring(active))
+      local button = MinimapCluster and MinimapCluster.Tracking and MinimapCluster.Tracking.Button
+      local onEvent = button and button.GetScript and button:GetScript("OnEvent")
+      if onEvent and not (button.IsMenuOpen and button:IsMenuOpen()) then onEvent(button, "SPELLS_CHANGED") end
+    end)
+  end)
+end
+
 --- Switches Find Fish on when the option is set, the character knows it and it is off.
 function M.Check()
   if not (BJ.settings and BJ.settings.findFish) then return end
@@ -33,7 +49,11 @@ function M.Check()
     if id == FIND_FISH or (name and n == name) then
       if not active then
         local set = C_Minimap and C_Minimap.SetTracking or SetTracking
-        if set then set(i, true) BJ:Debug("Find Fish enabled") end
+        if set then
+          set(i, true)
+          BJ:Debug("Find Fish enabled")
+          M.SyncMenu(i)
+        end
       end
       return
     end

@@ -4,24 +4,52 @@
   <Script file="Locales\deDE.lua"/>
   <Script file="Locales\frFR.lua"/>
   <Script file="Core\Helper\Colors.lua"/>
+  <Script file="Core\Helper\Format.lua"/>
   <Script file="Core\Helper\Icons.lua"/>
   <Script file="Core\Helper\Flavor.lua"/>
   <Script file="Core\Core.lua"/>
+  <Script file="Core\Helper\Menu.lua"/>
   <Script file="Core\DB.lua"/>
   <Script file="Core\Helper\Zone.lua"/>
   <Script file="Core\Helper\Skill.lua"/>
   <Script file="Core\Helper\Gear.lua"/>
+  <Script file="Core\Helper\Lures.lua"/>
+  <Script file="Core\Helper\Catalog.lua"/>
+  <Script file="Core\Helper\RecipeItems.lua"/>
+  <Script file="Core\Helper\Prices.lua"/>
+  <Script file="Core\Helper\Stock.lua"/>
+  <Script file="Core\Helper\PriceHistory.lua"/>
+  <Script file="Modules\Data\Retail\Fishs.lua"/>
+  <Script file="Modules\Data\Retail\Vendors.lua"/>
+  <Script file="Modules\Data\Retail\Recipes.lua"/>
+  <Script file="Modules\Data\Forever\Fishs.lua"/>
+  <Script file="Modules\Data\Forever\Vendors.lua"/>
+  <Script file="Modules\Data\Forever\Recipes.lua"/>
   <Script file="Core\API.lua"/>
   <Script file="Modules\DoubleClick.lua"/>
   <Script file="Modules\Cast.lua"/>
   <Script file="Modules\Buffs.lua"/>
+  <Script file="Modules\Lures.lua"/>
+  <Script file="Modules\LureScan.lua"/>
+  <Script file="Modules\Recipes.lua"/>
+  <Script file="Modules\Vendors.lua"/>
   <Script file="Modules\FindFish.lua"/>
+  <Script file="Modules\Pins.lua"/>
   <Script file="Modules\Tracker.lua"/>
   <Script file="Modules\ZoneMap.lua"/>
+  <Script file="Modules\PriceChart.lua"/>
+  <Script file="Modules\PriceLog.lua"/>
   <Script file="Modules\Journal.lua"/>
   <Script file="Modules\Tooltip.lua"/>
   <Script file="Modules\Bobber.lua"/>
+  <Script file="Modules\Diary.lua"/>
+  <Script file="Modules\DiaryList.lua"/>
+  <Script file="Modules\SkillBar.lua"/>
   <Script file="Modules\Broker.lua"/>
   <Script file="Core\Options.lua"/>
+  <Script file="Core\Export.lua"/>
   <Script file="Core\Commands.lua"/>
+  <Frame name="BobbersJournalPinTemplate" mixin="MapCanvasPinMixin" enableMouse="true" virtual="true">
+    <Size x="22" y="22"/>
+  </Frame>
 </Ui>

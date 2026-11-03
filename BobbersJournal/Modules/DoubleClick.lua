@@ -259,6 +259,12 @@ local function onMouseDown(_, mouseButton)
   end
   lastPress[key] = nil
 
+  if BJ.settings and BJ.settings.debug then
+    -- which frame lies under the mouse (an open dialog window takes the click away from the world)
+    local focus = GetMouseFoci and GetMouseFoci()[1] or (GetMouseFocus and GetMouseFocus())
+    local fname = focus and focus.GetName and focus:GetName()
+    DC:Log(format("second click %s over frame: %s", key, tostring(fname or (focus == WorldFrame and "WorldFrame") or "?")))
+  end
   if DC:InCombat() then DC:Log("double click " .. key .. " ignored: in combat") return end
   local ctx = DC:Situation(modifier, mouseButton)
   local name, handler = DC:Choose(modifier, mouseButton, ctx)
