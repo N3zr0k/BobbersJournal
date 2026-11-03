@@ -64,13 +64,26 @@ jobs:
       - name: Package (and upload to CurseForge for beta / final)
         if: steps.ver.outputs.new == 'true'
         uses: BigWigsMods/packager@v2
+        env:
+          # We tag locally in this job; the packager skips branch pushes with a tag at HEAD, so present it as a tag build.
+          GITHUB_REF: refs/tags/${{ steps.ver.outputs.tag }}
+          GITHUB_REF_NAME: ${{ steps.ver.outputs.tag }}
+          GITHUB_REF_TYPE: tag
         with:
           args: ${{ steps.ver.outputs.stage == 'alpha' && '-d' || '-w 0 -a 0' }}
       - name: GitHub release
         if: steps.ver.outputs.new == 'true'
         run: |
+          echo "--- packager output ---"
+          ls -la .release || true
+          ZIP=$(find . -maxdepth 3 -name '*.zip' -not -path './.git/*' | head -n1)
+          if [ -z "$ZIP" ]; then
+            echo "No zip was produced by the packager (see the packager step above)."
+            exit 1
+          fi
+          echo "Using $ZIP"
           FLAGS=""
           TITLE="${{ steps.ver.outputs.version }}"
           if [ "${{ steps.ver.outputs.stage }}" = "alpha" ]; then FLAGS="--prerelease"; fi
           if [ "${{ steps.ver.outputs.stage }}" = "beta" ]; then TITLE="$TITLE (Beta)"; fi
-          gh release create "${{ steps.ver.outputs.tag }}" .release/*.zip --title "$TITLE" --generate-notes $FLAGS
+          gh release create "${{ steps.ver.outputs.tag }}" "$ZIP" --title "$TITLE" --generate-notes $FLAGS
