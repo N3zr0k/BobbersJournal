@@ -110,7 +110,7 @@ local function createProvider()
         decorate(pin)
         paint(pin, npc)
         pin.npc = npc
-        pin:SetScript("OnEnter", function(self) tooltip(self, self.npc) end)
+        pin:SetScript("OnEnter", function(frame) tooltip(frame, frame.npc) end)
         pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
         if pin.UseFrameLevelType then pin:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI") end
         pin:SetPosition(npc.x, npc.y)

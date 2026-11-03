@@ -168,9 +168,7 @@ local function marker(i)
   -- Atlas "Professions_Tracking_Fish" (the fish glyph of the minimap tracking); where the client lacks it, the icon of
   -- "Find Fish", and as the last resort the addon's own fish symbol.
   local ok = m.tex.SetAtlas and pcall(m.tex.SetAtlas, m.tex, "Professions_Tracking_Fish", false)
-  if ok and m.tex:GetAtlas() then
-    -- atlas set
-  else
+  if not (ok and m.tex:GetAtlas()) then
     local icon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(43308) or (GetSpellTexture and GetSpellTexture(43308))
     if icon then
       m.tex:SetTexture(icon)

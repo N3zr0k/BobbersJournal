@@ -396,10 +396,10 @@ local function ensureBox(form)
   -- from page to page and moves with the title), instead of staying at the place of the first page
   box.form = form
   function box.track()
-    local p, relTo, relPoint, px, py = desc:GetPoint(1)
+    local p, relTo, relP, px, py = desc:GetPoint(1)
     if not p or relTo == box.content then return end
     box.scroll:ClearAllPoints()
-    box.scroll:SetPoint(p, relTo, relPoint, px, py)
+    box.scroll:SetPoint(p, relTo, relP, px, py)
     box.scroll:SetPoint("BOTTOMRIGHT", form, "BOTTOMRIGHT", -box.inset, 14)
   end
   function box.reinset() box.scroll:SetPoint("BOTTOMRIGHT", form, "BOTTOMRIGHT", -box.inset, 14) end
@@ -472,10 +472,10 @@ local function ensureBox(form)
   box.sync = function() scrollTo(offset) end
   box.setOffset = scrollTo
   -- arrow buttons step the page
-  local function arrow(name, point, step)
+  local function arrow(name, anchor, step)
     local btn = CreateFrame("Button", nil, bar)
     btn:SetSize(17, 11)
-    btn:SetPoint(point)
+    btn:SetPoint(anchor)
     local tex = btn:CreateTexture(nil, "BACKGROUND")
     tex:SetAllPoints()
     tex:SetAtlas("minimal-scrollbar-arrow-" .. name)

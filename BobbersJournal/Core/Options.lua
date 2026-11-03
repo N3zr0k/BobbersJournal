@@ -568,19 +568,19 @@ end
 local function register()
   local overview = buildOverview()
   local general = buildGeneral(overview.name)
-  local bobber = buildBobber(overview.name)
+  local bobberPage = buildBobber(overview.name)
   local lures = buildLures(overview.name)
   if Settings and Settings.RegisterCanvasLayoutCategory then
     local cat = Settings.RegisterCanvasLayoutCategory(overview, overview.name)
     Settings.RegisterAddOnCategory(cat)
     BJ.settingsSubcategory = Settings.RegisterCanvasLayoutSubcategory(cat, general, general.name)
-    Settings.RegisterCanvasLayoutSubcategory(cat, bobber, bobber.name)
+    Settings.RegisterCanvasLayoutSubcategory(cat, bobberPage, bobberPage.name)
     Settings.RegisterCanvasLayoutSubcategory(cat, lures, lures.name)
     BJ.settingsCategory = cat
   elseif InterfaceOptions_AddCategory then
     InterfaceOptions_AddCategory(overview)
     InterfaceOptions_AddCategory(general)
-    InterfaceOptions_AddCategory(bobber)
+    InterfaceOptions_AddCategory(bobberPage)
     InterfaceOptions_AddCategory(lures)
   end
 end

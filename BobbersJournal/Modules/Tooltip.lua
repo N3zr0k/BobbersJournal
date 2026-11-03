@@ -458,11 +458,11 @@ local function drawBar(tooltip, data)
     tooltip.bjBar = bar
     -- The bar is as wide as the tooltip (text inset 10 px on both sides); segments and mark follow the width.
     function bar.layout()
-      local data = bar.data
-      if not data then return end
+      local cur = bar.data
+      if not cur then return end
       local width = math.max(BAR_W, (tooltip:GetWidth() or 0) - 20)
       bar:SetWidth(width)
-      M.LayoutBar(bar, data, width, BAR_H)
+      M.LayoutBar(bar, cur, width, BAR_H)
     end
     tooltip:HookScript("OnSizeChanged", function() if bar:IsShown() then bar.layout() end end)
     local function hide() bar:Hide() end
