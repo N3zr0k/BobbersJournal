@@ -197,6 +197,8 @@ local function loadItems(ids, done)
   C_Timer.After(2, finish)
 end
 
+local pane, selected, selectedLevel -- selected = "fish:123" or "zone:2393"
+
 local function onProvider(_, provider)
   if not BJ.settings.diaryList or type(provider) ~= "table" or provider.bjDone then return end
   if not (provider.IsEmpty and provider:IsEmpty()) then return end
@@ -217,7 +219,6 @@ local function onProvider(_, provider)
 end
 
 -- Right side: the tooltip of the fish in the style of a recipe page (own frame over the schematic form)
-local pane, selected, selectedLevel -- selected = "fish:123" or "zone:2393"
 
 local function hidePane()
   if pane and pane:IsShown() then pane:Hide() end
@@ -388,7 +389,6 @@ local function ensurePane()
   return pane
 end
 
-local Paint = ns.Colors.Paint
 local HEADING = "|cff33bb66" -- green of the headings on the game's fish pages (information from the game)
 local AQUA = ns.Colors.aquaHex -- headings of our own data
 

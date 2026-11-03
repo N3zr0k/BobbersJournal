@@ -3,7 +3,7 @@ local BJ, Flavor = ns.BJ, ns.Flavor
 local L = BJ.L
 -- Shows the saved fishing teachers and vendors (API.GetNPCs) on the world map (own data provider with pins of the game's map
 -- canvas) and on the minimap (small frames, placed from the player's position in steps of a quarter second while the option
--- is on and the minimap is shown; there is no event for "player moved"). 
+-- is on and the minimap is shown; there is no event for "player moved").
 -- Not tested in the game. Option: settings.npcPins.
 local M = BJ:RegisterModule("Pins")
 

@@ -499,7 +499,7 @@ function M.Show(book, z, top)
   local area = subName and BJ.API.GetSubZoneArea and BJ.API.GetSubZoneArea(z, subName)
   if area then
     -- the whole sub zone from the game's exploration data: the shaped overlay pieces of the area, tinted
-    local layer, sc, n = area.layer, w / area.layer.layerWidth, 0
+    local layer, sc, used = area.layer, w / area.layer.layerWidth, 0
     local TW, TH = layer.tileWidth, layer.tileHeight
     for oi, ov in ipairs(area.overlays) do
       -- soft edge: a fading rectangle over the hit area of the overlay, so the area glows and fades out at the rim
@@ -521,11 +521,11 @@ function M.Show(book, z, top)
           if k == across then fw = 16 while fw < pw do fw = fw * 2 end end
           local file = ov.fileDataIDs[(j - 1) * across + k]
           if file then
-            n = n + 1
-            local c = cells[n]
+            used = used + 1
+            local c = cells[used]
             if not c then
               c = root.canvas:CreateTexture(nil, "ARTWORK", nil, 3)
-              cells[n] = c
+              cells[used] = c
             end
             if c.mask and c.mask ~= mask then c:RemoveMaskTexture(c.mask) c.mask = nil end
             if not c.mask then c:AddMaskTexture(mask) c.mask = mask end

@@ -292,7 +292,7 @@ function DB:Log(kind, zone, ctx, items)
   log[#log + 1] = rec
   if #log > self.MAX_LOG + 200 then -- trim in batches, not on every write
     local n = #log - self.MAX_LOG
-    table.move(log, n + 1, #log, 1)
+    for i = 1, #log - n do log[i] = log[i + n] end
     for i = #log - n + 1, #log do log[i] = nil end
   end
 end

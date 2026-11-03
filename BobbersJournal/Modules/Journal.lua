@@ -420,7 +420,6 @@ local function pageDY() return PAGE_BASE end
 local function detailRow(i)
   local row = frame.detailRows[i]
   if row then return row end
-  local book = frame.book
   row = {}
   row.left = frame.page:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
   row.left:SetJustifyH("LEFT")
@@ -919,7 +918,7 @@ local function refresh()
   if state.rpageKey ~= pageKey then state.rpageKey, state.rpage = pageKey, 1 end
   if (state.rpage or 1) > #pages then state.rpage = 1 end
   local mode = pages[state.rpage or 1]
-  local rows, beside, title, color, extra = buildPage(sel, mode, lines)
+  local rows, beside, title, _, extra = buildPage(sel, mode, lines)
   extra = extra or {}
   local hasIcon = sel ~= nil and sel.icon ~= nil and mode == "info" and sel.kind ~= "npc"
   -- Nothing selected: one larger message in the middle of the right page instead of rows.
@@ -933,7 +932,6 @@ local function refresh()
   end
   local nextY = layoutDetail(rows, beside, hasIcon, titleH)
   -- map page: zones and sub zones; the zone of a fish with only that fish; the vendors of a zone
-  local map = BJ.modules.ZoneMap
   if map then
     if extra.fishZone then
       BJ.Protected("fish map", function()

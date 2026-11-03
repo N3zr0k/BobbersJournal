@@ -7,7 +7,7 @@ local L = BJ.L
 local M = BJ:RegisterModule("Tooltip")
 
 local C = ns.Colors
-local WHITE, GREY, YELLOW = C.sandHex, C.parchmentHex, C.aquaHex
+local WHITE, GREY = C.sandHex, C.parchmentHex
 local MAX_FISH = 5
 local AVG = "\195\152 " -- the average sign (U+00D8) and a space
 local MIN_SESSION, MIN_TOTAL = 60, 300 -- seconds of fishing (session / all sessions) before a rate is shown
@@ -480,7 +480,6 @@ end
 
 --- Appends the lines from M.Lines to a tooltip: headers with a rule, content below them indented, the skill bar
 --- and its legend (the legend only with the chosen key held, or always, as set in the options).
-local measure
 -- Widest "left + gap + right" pair of the double lines; the tooltip gets at least this width so the columns never overlap.
 local function neededWidth(lines)
   measure = measure or UIParent:CreateFontString(nil, "ARTWORK", "GameTooltipText")

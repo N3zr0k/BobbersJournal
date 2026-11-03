@@ -1,6 +1,5 @@
 local _, ns = ...
 local BJ = ns.BJ
-local L = BJ.L
 -- Optional: keeps the minimap tracking "Find Fish" switched on. Checked at login / zone change and when a cast starts,
 -- never on tracking changes, so a player who switches it off later is not fought within the session.
 -- Retail: C_Minimap.GetTrackingInfo returns a table; Forever: GetTrackingInfo returns name, texture, active.
