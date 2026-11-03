@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0-beta.2
+## 0.2.0-beta.3
 - Catch tracker: casts, catches, misses, zone and sub zone, coordinates, lure, fishing skill, server hour, fishing time and fishing buffs with their source; by-catch is saved with its item class
 - Database per client (Retail / Forever) with zones, points and recipes, plus a public API (`BobbersJournalAPI`) for other addons
 - Journal in book design: fish, junk, lures, zones, vendors and teachers with paging on the left and a map, info or sales page on the right, search and bookmarks (TomTom route for vendors if TomTom is installed)

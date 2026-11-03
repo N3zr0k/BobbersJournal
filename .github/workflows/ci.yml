@@ -1,0 +1,76 @@
+name: CI and release
+
+# Every push and pull request: lint and smoke tests.
+# Push to main with a new TOC version and green checks: tag + GitHub release,
+# and for beta / final also the CurseForge upload (alpha stays GitHub prerelease only).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: lunarmodules/luacheck@v1
+
+  smoketest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install lupa
+      - run: python3 tests/run.py retail
+      - run: python3 tests/run.py forever
+      - run: python3 tests/scenario.py
+
+  release:
+    needs: [lint, smoketest]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Read TOC version
+        id: ver
+        run: |
+          VERSION=$(grep -m1 '^## Version:' BobbersJournal/BobbersJournal.toc | sed 's/^## Version:[[:space:]]*//' | tr -d '\r')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            echo "new=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "new=true" >> "$GITHUB_OUTPUT"
+          fi
+          case "$VERSION" in
+            *-alpha*) echo "stage=alpha" >> "$GITHUB_OUTPUT" ;;
+            *-beta*)  echo "stage=beta" >> "$GITHUB_OUTPUT" ;;
+            *)        echo "stage=release" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Create tag
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          git tag "${{ steps.ver.outputs.tag }}"
+          git push origin "${{ steps.ver.outputs.tag }}"
+      - name: Package (and upload to CurseForge for beta / final)
+        if: steps.ver.outputs.new == 'true'
+        uses: BigWigsMods/packager@v2
+        with:
+          args: ${{ steps.ver.outputs.stage == 'alpha' && '-d' || '-w 0 -a 0' }}
+      - name: GitHub release
+        if: steps.ver.outputs.new == 'true'
+        run: |
+          FLAGS=""
+          TITLE="${{ steps.ver.outputs.version }}"
+          if [ "${{ steps.ver.outputs.stage }}" = "alpha" ]; then FLAGS="--prerelease"; fi
+          if [ "${{ steps.ver.outputs.stage }}" = "beta" ]; then TITLE="$TITLE (Beta)"; fi
+          gh release create "${{ steps.ver.outputs.tag }}" .release/*.zip --title "$TITLE" --generate-notes $FLAGS

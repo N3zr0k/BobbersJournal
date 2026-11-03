@@ -3,6 +3,8 @@ ignore:
   - documentation
   - CLAUDE.md
   - .github
+  - tests
+  - .luacheckrc
   - README.md
   - CHANGELOG.md
 move-folders:
