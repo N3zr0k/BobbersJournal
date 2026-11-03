@@ -5,3 +5,5 @@ ignore:
   - .github
   - README.md
   - CHANGELOG.md
+move-folders:
+  BobbersJournal/BobbersJournal: BobbersJournal

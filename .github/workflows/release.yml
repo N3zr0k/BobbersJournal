@@ -1,0 +1,22 @@
+name: Package and upload
+
+# Push a tag like v0.2.0-beta.1 or v0.2.0 to upload to CurseForge.
+# Tags containing "alpha" are skipped on purpose (alpha builds stay manual).
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    if: ${{ !contains(github.ref_name, 'alpha') }}
+    runs-on: ubuntu-latest
+    env:
+      CF_API_KEY: ${{ secrets.CF_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The packager marks the file as beta/alpha/release from the tag name;
+      # a tag without alpha/beta is uploaded as a release.
+      - uses: BigWigsMods/packager@v2
