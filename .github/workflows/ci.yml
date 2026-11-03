@@ -63,14 +63,13 @@ jobs:
           git push origin "${{ steps.ver.outputs.tag }}"
       - name: Package (and upload to CurseForge for beta / final)
         if: steps.ver.outputs.new == 'true'
-        uses: BigWigsMods/packager@v2
-        env:
-          # We tag locally in this job; the packager skips branch pushes with a tag at HEAD, so present it as a tag build.
-          GITHUB_REF: refs/tags/${{ steps.ver.outputs.tag }}
-          GITHUB_REF_NAME: ${{ steps.ver.outputs.tag }}
-          GITHUB_REF_TYPE: tag
-        with:
-          args: ${{ steps.ver.outputs.stage == 'alpha' && '-d' || '-w 0 -a 0' }}
+        run: |
+          # The BigWigsMods/packager action refuses branch pushes with a tag at HEAD ("future tag"), and GITHUB_* variables
+          # cannot be overridden for an action. So the same script (same commit as packager@v2) is run directly.
+          curl -fsSL https://raw.githubusercontent.com/BigWigsMods/packager/e50a250f8705041e40f2fa1ddcb280a686d65aa0/release.sh -o "$RUNNER_TEMP/release.sh"
+          if [ "${{ steps.ver.outputs.stage }}" = "alpha" ]; then ARGS="-d"; else ARGS="-w 0 -a 0"; fi
+          env -u GITHUB_EVENT_NAME GITHUB_REF="refs/tags/${{ steps.ver.outputs.tag }}" GITHUB_REF_NAME="${{ steps.ver.outputs.tag }}" \
+            bash "$RUNNER_TEMP/release.sh" $ARGS
       - name: GitHub release
         if: steps.ver.outputs.new == 'true'
         run: |

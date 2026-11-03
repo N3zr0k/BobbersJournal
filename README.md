@@ -4,7 +4,7 @@
 
 Angel-Tagebuch und Verbesserungen für den Beruf Angeln in World of Warcraft (WoW Forever und Retail).
 
-> **Status 0.2.2-beta.2:** In Retail getestet. **WoW Forever ist noch nicht getestet** (bisher nur per Mock-Test geprüft), dort kann es Fehler geben.
+> **Status 0.2.2-beta.3:** In Retail getestet. **WoW Forever ist noch nicht getestet** (bisher nur per Mock-Test geprüft), dort kann es Fehler geben.
 
 ## Funktionen
 - **Fangdaten:** Würfe, Fänge, Fehlwürfe, Gebiet und Subzone, Koordinaten, Köder, Angelfertigkeit, Serverstunde, Angelzeit und Angelbuffs mit Quelle. Beifang wird mit Item-Klasse gespeichert.
