@@ -209,8 +209,13 @@ local function setAction(a)
 end
 
 local function onPreClick(_, mouseButton, down)
-  if DC:InCombat() or not pending then
-    DC:Log("click on the button without a pending handler or in combat")
+  if DC:InCombat() then
+    -- attributes of a secure button cannot be changed in combat (ADDON_ACTION_BLOCKED); they were cleared after the last click
+    DC:Log("click on the button in combat")
+    return
+  end
+  if not pending then
+    DC:Log("click on the button without a pending handler")
     setAction(nil)
     return
   end
@@ -231,6 +236,7 @@ local function onPostClick(_, _, down)
   stopMouselook()
   if api.After then api.After(0.1, stopMouselook) end
   clear()
+  if not DC:InCombat() then setAction(nil) end -- no stale action stays on the button for a later click
   local done = pending
   pending = nil
   if done and done.handler.Done then pcall(done.handler.Done, done.ctx, done.action) end

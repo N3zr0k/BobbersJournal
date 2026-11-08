@@ -36,6 +36,10 @@ local function skin(kit)
 end
 
 local hasAtlas = BJ.HasAtlas
+-- Sizes come from the game's own constants (Blizzard_StatusTrackingBar): Retail 571 x 17, 6 px smaller bar, one segment;
+-- Forever uses the same templates with 1192 x 17, 3 px smaller bar and 20 segments (dividers). The container of the game
+-- decides the real size at runtime (Edit Mode, gamepad layout), see fit().
+local function constant(name, fallback) local v = _G[name] return type(v) == "number" and v or fallback end
 
 -- Geometry as in Blizzard's StatusTrackingBarContainer: container = size of the frame graphic (571 x 17), the bar
 -- (StatusBar, 6 px smaller each way) sits at BOTTOMLEFT 1/5, the frame graphic lies on top of it.
@@ -49,7 +53,8 @@ end
 local function create()
   frame = CreateFrame("Frame", "BobbersJournalSkillBar", UIParent)
   local info = hasAtlas(ART_ATLAS) and C_Texture.GetAtlasInfo(ART_ATLAS)
-  local aw, ah = info and info.width or BAR_W, info and info.height or BAR_H
+  local aw, ah = constant("STATUS_BAR_CONTAINER_WIDTH", info and info.width or BAR_W), constant("STATUS_BAR_CONTAINER_HEIGHT", info and info.height or BAR_H)
+  frame.adjust = constant("STATUS_BAR_SIZE_ADJUSTMENT", 6)
   frame:SetSize(aw, ah)
   frame:SetFrameStrata("MEDIUM") -- above the status bars of the game, so the mouse reaches it
   frame:EnableMouse(true)
@@ -58,8 +63,8 @@ local function create()
   local aqua = ns.Colors.aqua
   -- the bar itself: a real StatusBar with the experience bar fill atlas, only the colour differs
   frame.inner = CreateFrame("StatusBar", nil, frame)
-  frame.inner:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, 5)
-  frame.inner:SetSize(aw - 6, ah - 6)
+  frame.inner:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 1, frame.adjust - 1)
+  frame.inner:SetSize(aw - frame.adjust, ah - frame.adjust)
   frame.inner:SetMinMaxValues(0, 1)
   frame.inner:SetValue(0)
   frame.inner:SetStatusBarTexture(hasAtlas("UI-HUD-ExperienceBar-Fill-Experience") and "UI-HUD-ExperienceBar-Fill-Experience" or "Interface\\TargetingFrame\\UI-StatusBar")
@@ -96,12 +101,13 @@ local function create()
   frame.artTex = frame.artFrame:CreateTexture(nil, "OVERLAY")
   frame.artTex:SetAllPoints(frame.artFrame)
   if info then frame.artTex:SetAtlas(ART_ATLAS) end
+  frame.dividers = {}
   frame.pip = frame.artFrame:CreateTexture(nil, "OVERLAY", nil, 2)
   if hasAtlas("UI-HUD-ExperienceBar-Frame-Pip") then frame.pip:SetAtlas("UI-HUD-ExperienceBar-Frame-Pip") end
   frame.pip:SetSize(10, 14)
   frame.pip:Hide()
   frame.text = frame.artFrame:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-  frame.text:SetPoint("CENTER", 0, 3) -- 2 px higher than the original text position
+  frame.text:SetPoint("CENTER", 0, 1) -- Sven: 2 px lower than before
   frame.selection = CreateFrame("Frame", nil, frame)
   frame.selection:SetAllPoints()
   frame.selection:SetFrameLevel(frame:GetFrameLevel() + 5)
@@ -142,17 +148,71 @@ local function create()
   frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+-- Takes the size of the game's bar container (Edit Mode size, gamepad layout) and draws the segment dividers of the game
+-- (Forever: 20 segments; Retail: one segment, none). The dividers use the game's divider atlas.
+local DIVIDER_ATLAS = "ui-hud-experiencebar-divider"
+
+local function fit(w, h)
+  if not w or not h or w < 2 or h < 2 then return end
+  if frame.fitW == w and frame.fitH == h then return end
+  frame.fitW, frame.fitH = w, h
+  frame:SetSize(w, h)
+  frame.inner:SetSize(w - frame.adjust, h - frame.adjust)
+  local segments = constant("STATUS_BAR_NUM_SEGMENTS", 1)
+  local gamepadW = constant("STATUS_BAR_CONTAINER_WIDTH_GAMEPAD", 0)
+  if gamepadW > 0 and math.abs(w - gamepadW) < 1 then segments = constant("STATUS_BAR_NUM_SEGMENTS_GAMEPAD", segments) end
+  for i = 1, math.max(segments - 1, 0) do
+    local d = frame.dividers[i]
+    if not d then
+      d = frame.artFrame:CreateTexture(nil, "OVERLAY", nil, 1)
+      d:SetSize(3, 10)
+      if hasAtlas(DIVIDER_ATLAS) then d:SetAtlas(DIVIDER_ATLAS) else d:SetColorTexture(0, 0, 0, 0.6) end
+      frame.dividers[i] = d
+    end
+    d:ClearAllPoints()
+    d:SetPoint("LEFT", frame.artFrame, "LEFT", w / segments * i, 0)
+    d:Show()
+  end
+  for i = math.max(segments, 1), #frame.dividers do frame.dividers[i]:Hide() end
+end
+
+-- The lowest status bar container of the game that is showing a bar right now (experience, reputation, ...)
+local function lowestContainer(mgr)
+  local best, bestBottom
+  for _, c in ipairs(mgr and mgr.barContainers or {}) do
+    local bottom = c:IsShown() and (c:GetAlpha() or 0) > 0 and c:GetBottom()
+    if bottom and (not bestBottom or bottom < bestBottom) then best, bestBottom = c, bottom end
+  end
+  return best
+end
+
 local function place()
   frame:ClearAllPoints()
   local s = BJ.settings.skillBar
+  local mgr = _G.StatusTrackingBarManager
+  local container = lowestContainer(mgr)
+  -- the width is the one set in Edit Mode for the experience bar ("Size" in percent): it is kept by the main container
+  -- even while that one is hidden, so it is the fallback when no bar is showing
+  local sizer = container or (mgr and (mgr.MainStatusTrackingBarContainer or (mgr.barContainers and mgr.barContainers[1])))
+  if sizer then fit(sizer:GetWidth(), sizer:GetHeight()) end
   if s.point then
     frame:SetPoint("CENTER", UIParent, "CENTER", s.x or 0, s.y or 0)
-  else
-    -- default: directly above the experience bars
-    local mgr = _G.StatusTrackingBarManager
-    if mgr then frame:SetPoint("BOTTOM", mgr, "TOP", 0, 4) else frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 40) end
+    frame:SetScale(s.scale or 1)
+    return
   end
-  frame:SetScale(s.scale or 1)
+  -- default: directly below the lowest experience / reputation bar, in its scale (Edit Mode scales, bars come and go)
+  if container then
+    frame:SetPoint("TOP", container, "BOTTOM", 0, 0)
+    local ui = UIParent:GetEffectiveScale()
+    local ratio = ui > 0 and container:GetEffectiveScale() / ui or 1
+    frame:SetScale(ratio * (s.scale or 1))
+  elseif mgr then
+    frame:SetPoint("TOP", mgr, "BOTTOM", 0, 0)
+    frame:SetScale(s.scale or 1)
+  else
+    frame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 40)
+    frame:SetScale(s.scale or 1)
+  end
 end
 
 local function draw()
@@ -246,7 +306,30 @@ end
 --- Called by the options when the setting changes.
 function M.Refresh() BJ.Protected("skillbar", draw) end
 
+-- Follows the game's bars: the bar moves when a status bar appears, disappears or is scaled (one redraw after a burst)
+local function followGameBars()
+  local mgr = _G.StatusTrackingBarManager
+  if not mgr or mgr.bjHooked or not hooksecurefunc then return end
+  mgr.bjHooked = true
+  local queued
+  local function later()
+    if queued then return end
+    queued = true
+    local function run() queued = false if frame and not (BJ.settings.skillBar or {}).point then BJ.Protected("skillbar", draw) end end
+    if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end
+  end
+  if mgr.UpdateBarsShown then hooksecurefunc(mgr, "UpdateBarsShown", later) end
+  if mgr.UpdateBarVisuals then hooksecurefunc(mgr, "UpdateBarVisuals", later) end
+  for _, c in ipairs(mgr.barContainers or {}) do
+    for _, method in ipairs({"SetScale", "SetSize", "SetWidth", "SetPoint", "Show", "Hide", "SetAlpha"}) do
+      pcall(hooksecurefunc, c, method, later)
+    end
+    if c.HookScript then c:HookScript("OnSizeChanged", later) end
+  end
+end
+
 function M:OnEnable()
+  BJ:RegisterEvent("PLAYER_ENTERING_WORLD", "skillbar-follow", followGameBars)
   if EventRegistry and EventRegistry.RegisterCallback then
     EventRegistry:RegisterCallback("EditMode.Enter", function() editing, blizzardEdit = true, true BJ.Protected("skillbar-edit", draw) end, M)
     EventRegistry:RegisterCallback("EditMode.Exit", function() stop() end, M)
