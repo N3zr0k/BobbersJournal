@@ -9,7 +9,7 @@ local BJ, Zone, Skill = ns.BJ, ns.Zone, ns.Skill
 local M = BJ:RegisterModule("Tracker")
 
 local LOOT_ITEM = Enum and Enum.LootSlotType and Enum.LootSlotType.Item or 1
-local ABORT_WAIT = 0.5 -- the loot window can arrive shortly after the channel ends
+local ABORT_WAIT = 2 -- the loot window can arrive after the channel ends (other fishing addons may loot with a delay)
 local DUPLICATE_WINDOW = 2 -- seconds in which a second SUCCEEDED counts as the same cast
 local pending -- { zone, tier, pos, outcome }
 
@@ -105,10 +105,10 @@ local function onStop(_, unit, _, spellID)
   end
 end
 
-local function onLoot()
-  if not pending then return end
+local function onLoot(event)
+  if not pending then BJ:Debug("loot " .. tostring(event) .. ": no open cast") return end
   local ok, fishing = pcall(api.IsFishingLoot)
-  if not ok or BJ.Clean(fishing) ~= true then return end
+  if not ok or BJ.Clean(fishing) ~= true then BJ:Debug("loot " .. tostring(event) .. ": not fishing loot") return end
   local open = pending
   pending = nil
   open.duration = M.Duration(open)
@@ -118,7 +118,9 @@ end
 function M:OnEnable()
   BJ:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED", "tracker", onSucceeded)
   BJ:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP", "tracker", onStop)
-  BJ:RegisterEvent("LOOT_OPENED", "tracker", onLoot)
+  -- LOOT_READY too: with auto loot or loot addons the window may not open, the first of the two events settles the cast
+  BJ:RegisterEvent("LOOT_OPENED", "tracker", function() onLoot("LOOT_OPENED") end)
+  BJ:RegisterEvent("LOOT_READY", "tracker.ready", function() onLoot("LOOT_READY") end)
   -- the bank contents are only known to the client after a visit at the bank (in this login); the journal says so while not
   local function bankRead() if BJ.DB.session then BJ.DB.session.bankRead = true end end
   BJ:RegisterEvent("BANKFRAME_OPENED", "tracker.bank", bankRead)

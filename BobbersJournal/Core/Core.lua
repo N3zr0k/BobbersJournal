@@ -122,7 +122,7 @@ end
 local defaults = {
   minimap = {hide = false, minimapPos = 200, showInCompartment = false}, -- LibDBIcon reads these; the compartment entry comes from the TOC
   -- Casting intervenes in game control: off by default. weaponSwap only has an effect on Forever.
-  cast = {enabled = false, modifier = "SHIFT", button = "RightButton", weaponSwap = true, interval = 0.4, autoLure = false, bobberToy = false, favoriteLure = nil, autoBest = true},
+  cast = {enabled = false, modifier = "SHIFT", button = "RightButton", weaponSwap = true, reelKey = false, interval = 0.4, autoLure = false, bobberToy = false, favoriteLure = nil, autoBest = true},
   doubleclick = {central = false, modifier = "SHIFT", button = "RightButton", priority = {}, off = {}},
   tooltip = {enabled = true, catches = true, counters = true, items = true, junk = false, barDetails = "key", barKey = "SHIFT"}, -- junk: listed only on request
   bobber = {enabled = false, hideCatches = false, point = "TOP", x = 0, y = -160, scale = 1},

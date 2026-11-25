@@ -39,6 +39,10 @@ function M.ShowTooltip(owner)
     M.logo.tex = M.logo:CreateTexture(nil, "ARTWORK")
     M.logo.tex:SetAllPoints()
     M.logo.tex:SetTexture(ns.Icons.logo(64))
+    -- A child of GameTooltip keeps its own shown state: without this it comes back on every other tooltip
+    local function hideLogo() M.logo:Hide() end
+    GameTooltip:HookScript("OnHide", hideLogo)
+    if GameTooltip:HasScript("OnTooltipCleared") then GameTooltip:HookScript("OnTooltipCleared", hideLogo) end
   end
   M.logo:ClearAllPoints()
   M.logo:SetPoint("TOPRIGHT", GameTooltip, "TOPLEFT", -4, 0)
@@ -46,6 +50,7 @@ function M.ShowTooltip(owner)
 end
 
 function M.HideTooltip()
+  if M.logo then M.logo:Hide() end
   GameTooltip:Hide()
   if M.logo then M.logo:Hide() end
 end

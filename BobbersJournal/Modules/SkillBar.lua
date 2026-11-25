@@ -101,7 +101,6 @@ local function create()
   frame.artTex = frame.artFrame:CreateTexture(nil, "OVERLAY")
   frame.artTex:SetAllPoints(frame.artFrame)
   if info then frame.artTex:SetAtlas(ART_ATLAS) end
-  frame.dividers = {}
   frame.pip = frame.artFrame:CreateTexture(nil, "OVERLAY", nil, 2)
   if hasAtlas("UI-HUD-ExperienceBar-Frame-Pip") then frame.pip:SetAtlas("UI-HUD-ExperienceBar-Frame-Pip") end
   frame.pip:SetSize(10, 14)
@@ -148,32 +147,14 @@ local function create()
   frame:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
--- Takes the size of the game's bar container (Edit Mode size, gamepad layout) and draws the segment dividers of the game
--- (Forever: 20 segments; Retail: one segment, none). The dividers use the game's divider atlas.
-local DIVIDER_ATLAS = "ui-hud-experiencebar-divider"
-
+-- Takes the size of the game's bar container (Edit Mode size, gamepad layout). The segment dividers of the game (Forever:
+-- 20 segments) are not drawn on purpose.
 local function fit(w, h)
   if not w or not h or w < 2 or h < 2 then return end
   if frame.fitW == w and frame.fitH == h then return end
   frame.fitW, frame.fitH = w, h
   frame:SetSize(w, h)
   frame.inner:SetSize(w - frame.adjust, h - frame.adjust)
-  local segments = constant("STATUS_BAR_NUM_SEGMENTS", 1)
-  local gamepadW = constant("STATUS_BAR_CONTAINER_WIDTH_GAMEPAD", 0)
-  if gamepadW > 0 and math.abs(w - gamepadW) < 1 then segments = constant("STATUS_BAR_NUM_SEGMENTS_GAMEPAD", segments) end
-  for i = 1, math.max(segments - 1, 0) do
-    local d = frame.dividers[i]
-    if not d then
-      d = frame.artFrame:CreateTexture(nil, "OVERLAY", nil, 1)
-      d:SetSize(3, 10)
-      if hasAtlas(DIVIDER_ATLAS) then d:SetAtlas(DIVIDER_ATLAS) else d:SetColorTexture(0, 0, 0, 0.6) end
-      frame.dividers[i] = d
-    end
-    d:ClearAllPoints()
-    d:SetPoint("LEFT", frame.artFrame, "LEFT", w / segments * i, 0)
-    d:Show()
-  end
-  for i = math.max(segments, 1), #frame.dividers do frame.dividers[i]:Hide() end
 end
 
 -- The lowest status bar container of the game that is showing a bar right now (experience, reputation, ...)

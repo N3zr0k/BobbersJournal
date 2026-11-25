@@ -219,10 +219,56 @@ local function create(parent)
   root.note:SetPoint("CENTER")
 end
 
+-- The base tiles of the map art are the covered (unexplored) map; the explored parts are separate overlay pieces of the
+-- game (C_MapExplorationInfo). They are drawn over the base tiles in the same ink look, so explored areas show uncovered.
+local exploredTiles = {}
+local function drawExplored(z, info, scale)
+  for _, t in ipairs(exploredTiles) do t:Hide() end
+  local ex = C_MapExplorationInfo
+  if not (ex and ex.GetExploredMapTextures) then return end
+  local ok, overlays = pcall(ex.GetExploredMapTextures, z)
+  if not (ok and type(overlays) == "table") then return end
+  local TW, TH, used = info.tileWidth, info.tileHeight, 0
+  for _, ov in ipairs(overlays) do
+    if ov.fileDataIDs and ov.textureWidth and ov.textureWidth > 0 then
+      local across, down = math.ceil(ov.textureWidth / TW), math.ceil(ov.textureHeight / TH)
+      for j = 1, down do
+        local ph = (j < down) and TH or ((ov.textureHeight % TH == 0) and TH or ov.textureHeight % TH)
+        local fh = TH
+        if j == down then fh = 16 while fh < ph do fh = fh * 2 end end
+        for k = 1, across do
+          local pw = (k < across) and TW or ((ov.textureWidth % TW == 0) and TW or ov.textureWidth % TW)
+          local fw = TW
+          if k == across then fw = 16 while fw < pw do fw = fw * 2 end end
+          local file = ov.fileDataIDs[(j - 1) * across + k]
+          if file then
+            used = used + 1
+            local t = exploredTiles[used]
+            if not t then
+              t = root.canvas:CreateTexture(nil, "ARTWORK", nil, 1)
+              t:AddMaskTexture(root.fade)
+              exploredTiles[used] = t
+            end
+            t:SetTexture(file)
+            t:SetTexCoord(0, pw / fw, 0, ph / fh)
+            t:SetDesaturated(true)
+            t:SetVertexColor(1, 0.608, 0.243) t:SetAlpha(0.62)
+            t:ClearAllPoints()
+            t:SetPoint("TOPLEFT", root.canvas, "TOPLEFT", (ov.offsetX + TW * (k - 1)) * scale, -(ov.offsetY + TH * (j - 1)) * scale)
+            t:SetSize(pw * scale, ph * scale)
+            t:Show()
+          end
+        end
+      end
+    end
+  end
+end
+
 -- Map art as tiles (like the world map), scaled so the map fills the page height (and at least the width).
 -- Returns the canvas size in pixels.
 local function drawMap(z, vw, vh)
   for _, t in ipairs(tiles) do t:Hide() end
+  for _, t in ipairs(exploredTiles) do t:Hide() end
   root.note:SetText("")
   local ok = C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures
   local layers = ok and select(2, pcall(C_Map.GetMapArtLayers, z))
@@ -248,6 +294,7 @@ local function drawMap(z, vw, vh)
         if not t.masked then t:AddMaskTexture(root.fade) t.masked = true end
         t:Show()
       end
+      BJ.Protected("explored map", drawExplored, z, info, scale)
       return w, h
     end
   end

@@ -53,6 +53,16 @@ function M.BlockedBy()
   end
 end
 
+-- Name of a loaded weapon swap addon of BetterFishing (its swap is used instead of ours), else nil.
+local SWAP_EXTERNAL = {"BetterFishing_WeaponSwap", "BetterFishingWeaponSwap", "BetterFishing WeaponSwap"}
+function M.SwapBlockedBy()
+  if not api.IsAddOnLoaded then return nil end
+  for _, name in ipairs(SWAP_EXTERNAL) do
+    local ok, loaded = pcall(api.IsAddOnLoaded, name)
+    if ok and (loaded == true or loaded == 1) then return name end
+  end
+end
+
 function M.Enabled() return opt("enabled") == true and not M.BlockedBy() end
 
 local function findPole()
@@ -137,7 +147,7 @@ end
 
 --- Weapon swap only on Forever (Retail does not need a pole in hand) and only if the option is on.
 function M.SwapWanted()
-  return ns.Flavor.current == ns.Flavor.FOREVER and opt("weaponSwap") ~= false
+  return ns.Flavor.current == ns.Flavor.FOREVER and opt("weaponSwap") ~= false and not M.SwapBlockedBy()
 end
 
 -- Auto lure: the pole is in hand and has no lure -> this click applies the best lure from the bags (macro: use the
@@ -315,6 +325,7 @@ function M:OnEnable()
   -- Attacked: equipment is locked in combat, so the weapons come back the moment combat ends.
   BJ:RegisterEvent("PLAYER_REGEN_DISABLED", "cast", function() if saved() then M.restorePending = true end end)
   M.CreateKeyButton()
+  M.EnableReelKey()
   requestToyData()
   BJ:RegisterEvent("PLAYER_ENTERING_WORLD", "cast.toy", requestToyData)
   if saved() then watch() end -- after login/reload, keep watching while weapons are still remembered
@@ -351,6 +362,41 @@ function M.CreateKeyButton()
     end
   end)
   keyButton:SetScript("PostClick", function(_, _, down) if not down then prepared = nil end end)
+end
+
+-- One-key fishing (Forever, option cast.reelKey): while the fishing channel runs, the cast key is bound to the game's
+-- "interact with target" action (soft interact picks the bobber); when the channel ends the binding is cleared again, so
+-- the key casts again. Needs the soft target interact setting of the client. Out of combat only.
+local function reelWanted()
+  return ns.Flavor.current == ns.Flavor.FOREVER and M.Enabled() and opt("reelKey") == true
+end
+
+local function releaseReel()
+  if keyButton and SetOverrideBinding and not api.InCombatLockdown() then ClearOverrideBindings(keyButton) end
+end
+
+local function bindReel()
+  if not reelWanted() or api.InCombatLockdown() or not keyButton or not SetOverrideBinding then return end
+  local key = GetBindingKey and GetBindingKey("CLICK BobbersJournalCastButton:LeftButton")
+  if not key then return end
+  if GetCVar and SetCVar and GetCVar("softTargetInteract") == "0" then pcall(SetCVar, "softTargetInteract", "3") end
+  SetOverrideBinding(keyButton, true, key, "INTERACTTARGET")
+  BJ:Debug("one-key fishing: " .. key .. " reels in")
+end
+
+local function isFishingChannel()
+  local name = UnitChannelInfo and UnitChannelInfo("player")
+  return BJ.Clean(name) ~= nil and name == Skill.SpellName(Skill.REFERENCE)
+end
+
+function M.EnableReelKey()
+  BJ:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START", "cast.reel", function(_, unit)
+    if unit == "player" and isFishingChannel() then bindReel() end
+  end)
+  BJ:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP", "cast.reel", function(_, unit)
+    if unit == "player" then releaseReel() end
+  end)
+  BJ:RegisterEvent("PLAYER_REGEN_ENABLED", "cast.reel", releaseReel)
 end
 
 --- Text of the key the user bound to the cast button, or nil.

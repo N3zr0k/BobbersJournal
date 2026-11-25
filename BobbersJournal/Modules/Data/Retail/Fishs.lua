@@ -11,6 +11,7 @@ add(0, RETAIL, {
   4603, 6289, 6291, 6303, 6308, 6317, 6358, 6359,
   6361, 6362, 8365, 13422, 13754, 13756, 13757, 13758,
   13759, 13760, 13888, 13889, 21071, 21153,
+  6522, 12238, -- Deviate Fish, Darkshore Grouper (edible fish, class "consumable": not found by the item type)
 })
 
 -- Burning Crusade (level 1, Retail only)

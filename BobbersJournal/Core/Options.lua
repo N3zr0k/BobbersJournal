@@ -300,10 +300,14 @@ local function buildGeneral(overviewName)
 
   -- Casting
   local castSection = createSection(p, after, L["Casting"])
-  local castOn = function() return cast().enabled end
+  -- BetterFishing (or Fishing Buddy) casts itself, its weapon swap addon swaps itself: the matching options are locked
+  local castMod = function() return BJ.modules.Cast end
+  local castBlocked = function() return castMod() and castMod().BlockedBy() end
+  local swapBlocked = function() return castMod() and castMod().SwapBlockedBy() end
+  local castOn = function() return cast().enabled and not castBlocked() end
   local _, a1 = createCheckbox(p, castSection, L["Cast the fishing rod by double click or key"],
     L["Casts the fishing rod when you press the key or click twice. Off by default because it takes over a mouse button."],
-    castOn, function(v) cast().enabled = v end)
+    function() return cast().enabled end, function(v) cast().enabled = v end, nil, function() return not castBlocked() end)
   local _, a2 = createChoice(p, a1, L["Modifier key"], MODIFIERS, function() return cast().modifier end,
     function(v) cast().modifier = v end, modifierName, 0, castOn)
   local _, a3 = createChoice(p, a2, L["Mouse button"], BUTTONS, function() return cast().button end,
@@ -314,7 +318,13 @@ local function buildGeneral(overviewName)
   if isForever then
     _, a3 = createCheckbox(p, a3, L["Put away weapons and equip the pole"],
       L["Remembers your weapons, equips the pole and puts the weapons back after 5 minutes or when you are attacked."],
-      function() return cast().weaponSwap ~= false end, function(v) cast().weaponSwap = v end, 30, castOn)
+      function() return cast().weaponSwap ~= false end, function(v) cast().weaponSwap = v end, 30,
+      function() return castOn() and not swapBlocked() end)
+  end
+  if isForever then
+    _, a3 = createCheckbox(p, a3, L["One-key fishing: reel in with the same key"],
+      L["While the bobber is out, the cast key reels in the fish. Needs a key binding and the soft target interact setting of the client. The key casts again afterwards."],
+      function() return cast().reelKey == true end, function(v) cast().reelKey = v end, 30, castOn)
   end
   local keyNote = p:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
   keyNote:SetPoint("TOPLEFT", a3, "BOTTOMLEFT", 0, -10)
@@ -322,7 +332,11 @@ local function buildGeneral(overviewName)
   keyNote:SetJustifyH("LEFT")
   table.insert(p.refreshers, function()
     local key = BJ.modules.Cast and BJ.modules.Cast.BoundKey()
-    keyNote:SetText(format(L["Key binding: %s"], key or L["not set"]) .. "  -  " .. L["Set a key under Options > Key Bindings > AddOns."])
+    local text = format(L["Key binding: %s"], key or L["not set"]) .. "  -  " .. L["Set a key under Options > Key Bindings > AddOns."]
+    local blocked, swap = castBlocked(), swapBlocked()
+    if blocked then text = format(L["Disabled: %s is installed and handles casting."], blocked) .. "\n" .. text end
+    if swap then text = format(L["Weapon swap disabled: %s is installed and handles it."], swap) .. "\n" .. text end
+    keyNote:SetText(text)
   end)
 
   -- Tooltip
@@ -553,14 +567,14 @@ local function buildLures(overviewName)
 
   -- Automatic lures
   local autoSection = createSection(p, favHint, L["Automatic lures"])
-  local castOn = function() return cast().enabled end
+  local castOn = function() return cast().enabled and not (BJ.modules.Cast and BJ.modules.Cast.BlockedBy()) end
   local _, a1 = createCheckbox(p, autoSection, L["Apply lures automatically"],
     L["If the pole has no lure, the next click applies a lure from your bags (the favorite first); the click after that casts. Needs Casting to be on."],
     function() return cast().autoLure == true end, function(v) cast().autoLure = v end, 0, castOn)
   local _, a2 = createCheckbox(p, a1, L["Best lure as fallback"],
     L["Without a favorite, or when it is not in your bags, the lure with the highest fishing bonus in your bags is used. Off: only the favorite is used."],
     function() return cast().autoBest ~= false end, function(v) cast().autoBest = v end, 30,
-    function() return cast().enabled and cast().autoLure == true end)
+    function() return castOn() and cast().autoLure == true end)
   p.last = a2
   return page
 end
